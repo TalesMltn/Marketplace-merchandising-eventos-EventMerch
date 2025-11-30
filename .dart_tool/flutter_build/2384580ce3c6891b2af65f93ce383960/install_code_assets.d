@@ -1,0 +1,1 @@
+ D:\\NewMicr2\\.dart_tool\\flutter_build\\2384580ce3c6891b2af65f93ce383960\\native_assets.json: 

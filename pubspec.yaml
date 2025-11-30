@@ -1,0 +1,48 @@
+name: flutter_application_1
+description: "A new Flutter project."
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # SUPABASE + AUTH + REALTIME
+  supabase_flutter: ^2.8.0
+
+  # NAVEGACIÓN
+  go_router: ^14.2.0
+
+  # ESTADO
+  flutter_riverpod: ^2.5.1
+
+  # IMÁGENES CON CACHE (para las fotos del merch)
+  cached_network_image: ^3.3.1
+
+  # GENERAR QR DE RECOGIDA
+  qr_flutter: ^4.1.0
+
+  # COMPARTIR COMPROBANTE
+  share_plus: ^12.0.1
+
+  # IDs ÚNICOS LOCALES (carrito offline)
+  uuid: ^4.4.2
+
+  # ICONOS BONITOS
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
