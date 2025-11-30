@@ -57,7 +57,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ClipRRect(
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                           child: Image.asset(
-                            "assets/images/banner_bad_bunny.jpg",  // ← tu imagen local
+                            // Aquí va la imagen correcta según el evento
+                            event.name.contains('Adele')
+                                ? "assets/images/banner_adele2025.jpg"
+                                : event.name.contains('Marshmello')
+                                ? "assets/images/banner_marshmello2025.jpg"
+                                : "assets/images/banner_bad_bunny.jpg",  // Bad Bunny por defecto
                             height: 180,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -68,8 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(event.name,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(
+                                event.name,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
                               const SizedBox(height: 4),
                               Text(event.location),
                               Text(event.date.toLocal().toString().substring(0, 16)),

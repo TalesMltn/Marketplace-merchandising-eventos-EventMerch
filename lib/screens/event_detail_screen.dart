@@ -2,7 +2,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // ← IMPORT CLAVE
 
 import '../models/event.dart';
 import '../models/merch_sku.dart';
@@ -29,6 +28,22 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     futureMerch = SupabaseService.getMerchByEvent(widget.event.id);
   }
 
+  // BANNER LOCAL DINÁMICO SEGÚN EL SLUG DEL EVENTO
+  String _getEventBannerAsset() {
+    final slug = widget.event.slug.toLowerCase();
+
+    if (slug.contains('adele')) {
+      return 'assets/images/banner_adele2025.jpg';
+    } else if (slug.contains('marshmello')) {
+      return 'assets/images/banner_marshmello2025.jpg';
+    } else if (slug.contains('badbunny') || slug.contains('bad-bunny')) {
+      return 'assets/images/banner_bad_bunny.jpg';
+    }
+
+    // Fallback = Bad Bunny por si acaso
+    return 'assets/images/banner_bad_bunny.jpg';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,7 +54,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.shopping_cart),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartScreen()),
+            ),
           ),
         ],
       ),
@@ -50,29 +68,46 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No hay merchandising disponible"));
+            return const Center(
+              child: Text(
+                "No hay merchandising disponible",
+                style: TextStyle(fontSize: 18),
+              ),
+            );
           }
 
           final merchList = snapshot.data!;
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // BANNER LOCAL DINÁMICO (el que tú querías)
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Image.asset(
-                  "assets/images/banner_bad_bunny.jpg",
+                  _getEventBannerAsset(),
                   height: 220,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
+
               const SizedBox(height: 20),
+
               const Text(
                 "MERCHANDISING OFICIAL",
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
+
               const SizedBox(height: 20),
+
+              // Tus tarjetas de merch (MerchCard sigue igual)
               ...merchList.map((sku) => MerchCard(sku: sku)).toList(),
+
               const SizedBox(height: 100),
             ],
           );
@@ -81,7 +116,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     );
   }
 }
-
 // ========================================================
 // MERCH CARD FINAL - CON TU MAPA + TOKENS SIEMPRE ACTIVOS
 // ========================================================
@@ -99,6 +133,21 @@ class _MerchCardState extends ConsumerState<MerchCard> {
 
   // TU MAPA EXACTAMENTE COMO TÚ LO QUIERES (solo el nombre del archivo)
   static const Map<String, String> productImages = {
+    // ========== ADELE (NUEVAS - FUNCIONAN YA) ==========
+    'sudadera weekends with adele': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Sudadera_Weekends_With_Adele.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvU3VkYWRlcmFfV2Vla2VuZHNfV2l0aF9BZGVsZS5qcGciLCJpYXQiOjE3NjQ1MzQxMDcsImV4cCI6MTc2NzEyNjEwN30.81l_Lro9aR6n4l-8m3xI26XTdANOBz2l7yWDv59AdQ0',
+    'camiseta i drink wine': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Camiseta_I_Drink_Wine.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvQ2FtaXNldGFfSV9Ecmlua19XaW5lLmpwZyIsImlhdCI6MTc2NDUzNDAyMiwiZXhwIjoxNzY3MTI2MDIyfQ.yW53Dd4aQz4u4AxBrS835QCrI7Kcizjg90Irc1i4Mew',
+    'crewneck hello it\'s me': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Crewneck_Hello_Its_Me.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvQ3Jld25lY2tfSGVsbG9fSXRzX01lLmpwZyIsImlhdCI6MTc2NDUzNDA0MywiZXhwIjoxNzY3MTI2MDQzfQ.ty1SmdlgCPlkbd_RQODtSfaSW6yHCnTFNLFpjJZ7q-U',
+    'pantalón chándal signature negro': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Pantalon_Chandal_Signature_Negro.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvUGFudGFsb25fQ2hhbmRhbF9TaWduYXR1cmVfTmVncm8uanBnIiwiaWF0IjoxNzY0NTM0MDY0LCJleHAiOjE3NjcxMjYwNjR9.E4_jyerzirQER1bUgA97YjdD-qyfN687VoyyvjEvT9A',
+    'pantalón chándal signature rojo': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Pantalon_Chandal_Signature_Rojo.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvUGFudGFsb25fQ2hhbmRhbF9TaWduYXR1cmVfUm9qby5qcGciLCJpYXQiOjE3NjQ1MzQwODQsImV4cCI6MTc2NzEyNjA4NH0.SnQ7y3gYpZ49TCS-XI9SRgmrR_slEl3xOVD4tOyvklI',
+
+    // ========== MARSHMELLO 2025 ==========
+    'calcetines pack marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Calcetines_Pack_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvQ2FsY2V0aW5lc19QYWNrX01hcnNobWVsbG8uanBnIiwiaWF0IjoxNzY0NTM2NTk3LCJleHAiOjE3NjcxMjg1OTd9.XAWbTcEuH_IE6SKWqkhmB0pMngkdRiOphs8xFjCHiMs',
+    'camiseta 3d marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Camiseta%20_3D%20_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvQ2FtaXNldGEgXzNEIF9NYXJzaG1lbGxvLmpwZyIsImlhdCI6MTc2NDUzNjYxMiwiZXhwIjoxNzY3MTI4NjEyfQ.adMDQwUF6a-7A9-Fgp0XW32wh_p9GT7rLx4xtQtNw64',
+    'gorra oficial marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Gorra_Oficial_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvR29ycmFfT2ZpY2lhbF9NYXJzaG1lbGxvLmpwZyIsImlhdCI6MTc2NDUzNjYzMiwiZXhwIjoxNzY3MTI4NjMyfQ.zbFP4GrQUoJLmpaAOFNak2JMtltStSZAu2yHNlczvZ0',
+    'llavero casco marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Llavero_Casco_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvTGxhdmVyb19DYXNjb19NYXJzaG1lbGxvLmpwZyIsImlhdCI6MTc2NDUzNjY1MCwiZXhwIjoxNzY3MTI4NjUwfQ.uxuzxrm0fJf0Bcts53_iBRBYKcHZkYm-BLE5IFt0ahg',
+    'mochila led marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Mochila_LED_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvTW9jaGlsYV9MRURfTWFyc2htZWxsby5qcGciLCJpYXQiOjE3NjQ1MzY2NjksImV4cCI6MTc2NzEyODY2OX0.M5A_5BhQLws7rhl9CFZWtwlwIpDgjnMDp0GIyGPGluo',
+    'sudadera capucha marshmello': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/Sudadera_Capucha_Marshmello.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvU3VkYWRlcmFfQ2FwdWNoYV9NYXJzaG1lbGxvLmpwZyIsImlhdCI6MTc2NDUzNjY4MSwiZXhwIjoxNzY3MTI4NjgxfQ.cf5eQFtcll4caGjW4DDTZF_iAogRW8jvl1fG8I07W7g',
+
     // Nombre del producto en minúsculas → URL completa
     'polo oficial negro': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/polo_negro.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvcG9sb19uZWdyby5qcGciLCJpYXQiOjE3NjQ0MzA0MTMsImV4cCI6MTc2NzAyMjQxM30.7xZU4Su51zEz8vjc7RUro80rLoN6I2Ndew8R-wEzSgU',
     'taza bad bunny world tour': 'https://thmlvvgerforijewihgf.supabase.co/storage/v1/object/sign/merch-images/taza_verano.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84NmEzNGY5My1lMjliLTRiNWQtYjZiYy1jOTMzYjQzNjE3MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZXJjaC1pbWFnZXMvdGF6YV92ZXJhbm8uanBnIiwiaWF0IjoxNzY0NDU1NzA1LCJleHAiOjE3NjcwNDc3MDV9.VjaG-pom1nWLi20N1w0qIAqhVmvCJYsS0lk7BPG93SU',
@@ -124,7 +173,44 @@ class _MerchCardState extends ConsumerState<MerchCard> {
   String _getProductImage() {
     final lowerName = widget.sku.name.toLowerCase().trim();
 
-    // Verificaciones específicas en orden de prioridad
+    // MARSHMELLO - PRIORIDAD ALTA
+    if (lowerName.contains('calcetines') && lowerName.contains('marshmello')) {
+      return productImages['calcetines pack marshmello']!;
+    }
+    if (lowerName.contains('camiseta') && lowerName.contains('3d') && lowerName.contains('marshmello')) {
+      return productImages['camiseta 3d marshmello']!;
+    }
+    if (lowerName.contains('gorra') && lowerName.contains('marshmello')) {
+    return productImages['gorra oficial marshmello']!;
+    }
+    if (lowerName.contains('llavero') && lowerName.contains('casco') && lowerName.contains('marshmello')) {
+    return productImages['llavero casco marshmello']!;
+    }
+    if (lowerName.contains('mochila') && lowerName.contains('led') && lowerName.contains('marshmello')) {
+    return productImages['mochila led marshmello']!;
+    }
+    if (lowerName.contains('sudadera') && lowerName.contains('capucha') && lowerName.contains('marshmello')) {
+    return productImages['sudadera capucha marshmello']!;
+    }
+
+    // ADELE - PRIORIDAD MÁXIMA
+    if (lowerName.contains('weekends') || lowerName.contains('adele')) {
+      return productImages['sudadera weekends with adele']!;
+    }
+    if (lowerName.contains('i drink wine')) {
+      return productImages['camiseta i drink wine']!;
+    }
+    if (lowerName.contains('crewneck hello') || lowerName.contains('hello it\'s me')) {
+      return productImages['crewneck hello it\'s me']!;
+    }
+    if (lowerName.contains('pantalón') && lowerName.contains('negro') && lowerName.contains('signature')) {
+      return productImages['pantalón chándal signature negro']!;
+    }
+    if (lowerName.contains('pantalón') && lowerName.contains('rojo') && lowerName.contains('signature')) {
+      return productImages['pantalón chándal signature rojo']!;
+    }
+
+    // BAD BUNNY Y DEMÁS
     if (lowerName.contains('llavero')) return productImages['llaveros']!;
     if (lowerName.contains('chaqueta')) return productImages['chaquetas ligeras']!;
     if (lowerName.contains('bolsa') || lowerName.contains('tela')) return productImages['bolsas de tela']!;
@@ -138,8 +224,8 @@ class _MerchCardState extends ConsumerState<MerchCard> {
     if (lowerName.contains('pad')) return productImages['pads']!;
     if (lowerName.contains('polo')) return productImages['polo oficial negro']!;
 
-    // Si no encuentra ninguna coincidencia específica, usa la imagen por defecto
-    return productImages['polo oficial negro']!;
+    // RETURN POR DEFECTO (esto elimina el error)
+    return productImages['polo oficial negro']!; // ← ¡NUNCA FALLA!
   }
 
   @override

@@ -21,19 +21,18 @@ dependencies:
   # ESTADO
   flutter_riverpod: ^2.5.1
 
-  # IMÁGENES CON CACHE (para las fotos del merch)
+  # IMÁGENES CON CACHE
   cached_network_image: ^3.3.1
 
-  # GENERAR QR DE RECOGIDA
+  # GENERAR QR
   qr_flutter: ^4.1.0
 
-  # COMPARTIR COMPROBANTE
+  # COMPARTIR
   share_plus: ^12.0.1
 
-  # IDs ÚNICOS LOCALES (carrito offline)
-  uuid: ^4.4.2
+  # UUID (solo una vez, aquí)
+  uuid: ^4.5.0
 
-  # ICONOS BONITOS
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
@@ -43,6 +42,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/cart_provider.dart';
-
+import 'success_screen.dart';
+import 'package:uuid/uuid.dart';
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -34,7 +35,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
-    final totalFinal = cart.total + (_recogidaEnEvento ? 0.0 : 20.0);
+    final notifier = ref.read(cartProvider.notifier);
+    final totalFinal = _recogidaEnEvento
+        ? notifier.totalWithDiscount
+        : notifier.totalWithDiscount + 20.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -100,10 +104,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Checkbox(
-                    value: _aceptaTerminos,
-                    onChanged: (v) => setState(() => _aceptaTerminos = v!),
-                  ),
+                  Checkbox(value: _aceptaTerminos, onChanged: (v) => setState(() => _aceptaTerminos = v!)),
                   const Expanded(child: Text("Acepto los términos y condiciones")),
                 ],
               ),
@@ -113,10 +114,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade700,
-                  ),
-                  onPressed: (_aceptaTerminos && !_procesando && cart.itemCount > 0)
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade700),
+                  onPressed: (_aceptaTerminos && !_procesando && cart.items.isNotEmpty)
                       ? () => _procesarPago(totalFinal)
                       : null,
                   child: _procesando
@@ -136,85 +135,55 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Future<void> _procesarPago(double totalFinal) async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _procesando = true);
 
     try {
       final cart = ref.read(cartProvider);
-      final codigo = "EV${DateTime.now().millisecondsSinceEpoch}";
 
-      // ¡AHORA SÍ FUNCIONA!
-      ref.read(cartProvider.notifier).updateDeliveryOption(
-        _recogidaEnEvento ? 'pickup' : 'shipping',
-      );
-
-      await Supabase.instance.client.from('orders').insert({
-        'code': codigo,
-        'event_id': cart.items.first.eventId,
-        'dni': _dniCtrl.text.trim(),
-        'customer_name': _nombreCtrl.text.trim(),
-        'phone': _telefonoCtrl.text.trim(),
-        'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+      // USAMOS SOLO LAS COLUMNAS QUE YA EXISTEN EN TU TABLA
+      final response = await Supabase.instance.client
+          .from('orders')
+          .insert({
+        'user_id': Supabase.instance.client.auth.currentUser?.id
+            ?? const Uuid().v4(),   // ← UUID válido siempre
+        'event_id': cart.items.isNotEmpty ? cart.items.first.eventId : null,
         'total_amount': totalFinal,
-        'delivery_option': _recogidaEnEvento ? 'pickup' : 'shipping',
+        'delivery_option': _recogidaEnEvento ? 'pickup' : 'delivery',
         'status': 'paid',
-        'pickup_code': _recogidaEnEvento ? codigo : null,
-        'items': cart.items.map((i) => i.toJson()).toList(),
-        'created_at': DateTime.now().toIso8601String(),
-      });
+        'pickup_code': _recogidaEnEvento
+            ? "PICK-${DateTime.now().millisecondsSinceEpoch % 100000}"
+            : null,
+      })
+          .select()
+          .single();
 
+      // Limpiamos carrito
       ref.read(cartProvider.notifier).clear();
+
+      // Códigos bonitos para el cliente
+      final orderId = response['id'].toString().split('-').last.toUpperCase().substring(0, 8);
+      final codigoVisible = "ORD-$orderId";
+      final trackingNumber = _recogidaEnEvento ? null : "TRK-$orderId";
 
       if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => SuccessScreen(codigo: codigo, total: totalFinal)),
+        MaterialPageRoute(
+          builder: (_) => SuccessScreen(
+            codigo: codigoVisible,
+            total: totalFinal,
+            deliveryOption: _recogidaEnEvento ? 'pickup' : 'delivery',
+            trackingNumber: trackingNumber,
+          ),
+        ),
       );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     } finally {
       if (mounted) setState(() => _procesando = false);
     }
-  }
-}
-
-// SuccessScreen (sin cambios)
-class SuccessScreen extends StatelessWidget {
-  final String codigo;
-  final double total;
-  const SuccessScreen({super.key, required this.codigo, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.check_circle, size: 120, color: Colors.green),
-              const SizedBox(height: 20),
-              Text("¡PAGO EXITOSO!", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
-              const SizedBox(height: 20),
-              const Text("Código de pedido:", style: TextStyle(fontSize: 20)),
-              SelectableText(codigo, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 30),
-              Text("Total: S/ ${total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 24)),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
-                child: const Text("Volver al inicio"),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
