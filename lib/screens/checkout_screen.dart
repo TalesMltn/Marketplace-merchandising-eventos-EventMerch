@@ -1,10 +1,11 @@
-// lib/screens/checkout_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/cart_provider.dart';
+import '../models/cart_item.dart';
 import 'success_screen.dart';
 import 'package:uuid/uuid.dart';
+
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -32,13 +33,64 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
+  double calcularTotal() {
+    final cart = ref.read(cartProvider);
+
+    // Calcular el subtotal sumando todos los items del carrito
+    double subtotal = cart.items.fold(0.0, (sum, item) => sum + item.total);
+
+    // Calcular el descuento según las reglas del carrito
+    double descuento = 0.0;
+    if (subtotal >= 1000) {
+      descuento = subtotal * 0.15; // 15% de descuento
+    } else if (subtotal >= 600) {
+      descuento = subtotal * 0.10; // 10% de descuento
+    } else if (subtotal >= 300) {
+      descuento = subtotal * 0.05; // 5% de descuento
+    }
+
+    // Total con descuento aplicado
+    double totalConDescuento = subtotal - descuento;
+
+    if (!_recogidaEnEvento) {
+      // Para envío a domicilio: total con descuento más costo de envío
+      return totalConDescuento + 20.0;
+    } else {
+      bool tieneEntradas = cart.items.any((item) => item.type == CartItemType.ticket);
+
+      if (tieneEntradas) {
+        // Si ya tiene entradas, se cobra el total con descuento del carrito
+        return totalConDescuento;
+      } else {
+        // Si no tiene entradas, agregar el precio de una entrada al total con descuento
+        double precioEntrada = 0.0;
+
+        if (cart.items.isNotEmpty) {
+          String eventId = cart.items.first.eventId;
+
+          switch (eventId) {
+            case 'cd92719b-9fa7-4357-b49d-2ea20011403b':
+              precioEntrada = 43.00;
+              break;
+            case 'a323b0b1-3603-4b38-8298-d56a88035c1e':
+              precioEntrada = 90.00;
+              break;
+            case '30428f72-d715-4a9f-8a80-00356fd0f70a':
+              precioEntrada = 80.00;
+              break;
+          }
+        }
+
+        // Total con descuento más el precio de la entrada
+        return totalConDescuento + precioEntrada;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
-    final notifier = ref.read(cartProvider.notifier);
-    final totalFinal = _recogidaEnEvento
-        ? notifier.totalWithDiscount
-        : notifier.totalWithDiscount + 20.0;
+    final totalFinal = calcularTotal();
 
     return Scaffold(
       appBar: AppBar(
@@ -55,7 +107,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             children: [
               const Text("Datos de compra", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
-
               TextFormField(
                 controller: _dniCtrl,
                 decoration: const InputDecoration(labelText: "DNI", border: OutlineInputBorder()),
@@ -85,11 +136,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 decoration: const InputDecoration(labelText: "Email (opcional)", border: OutlineInputBorder()),
                 keyboardType: TextInputType.emailAddress,
               ),
-
               const SizedBox(height: 30),
               const Text("Método de entrega", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               RadioListTile<bool>(
-                title: const Text("Recogida en el evento (GRATIS)"),
+                title: const Text("Recogida en el evento (Incluye entrada requerida)"),
                 value: true,
                 groupValue: _recogidaEnEvento,
                 onChanged: (v) => setState(() => _recogidaEnEvento = v!),
@@ -100,7 +150,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 groupValue: _recogidaEnEvento,
                 onChanged: (v) => setState(() => _recogidaEnEvento = v!),
               ),
-
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -108,7 +157,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   const Expanded(child: Text("Acepto los términos y condiciones")),
                 ],
               ),
-
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
@@ -140,12 +188,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       final cart = ref.read(cartProvider);
 
-      // USAMOS SOLO LAS COLUMNAS QUE YA EXISTEN EN TU TABLA
       final response = await Supabase.instance.client
           .from('orders')
           .insert({
-        'user_id': Supabase.instance.client.auth.currentUser?.id
-            ?? const Uuid().v4(),   // ← UUID válido siempre
+        'user_id': Supabase.instance.client.auth.currentUser?.id ?? const Uuid().v4(),
         'event_id': cart.items.isNotEmpty ? cart.items.first.eventId : null,
         'total_amount': totalFinal,
         'delivery_option': _recogidaEnEvento ? 'pickup' : 'delivery',
@@ -157,10 +203,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           .select()
           .single();
 
-      // Limpiamos carrito
       ref.read(cartProvider.notifier).clear();
 
-      // Códigos bonitos para el cliente
       final orderId = response['id'].toString().split('-').last.toUpperCase().substring(0, 8);
       final codigoVisible = "ORD-$orderId";
       final trackingNumber = _recogidaEnEvento ? null : "TRK-$orderId";
@@ -179,9 +223,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error al procesar el pago: $e")),
+        );
+      }
     } finally {
       if (mounted) setState(() => _procesando = false);
     }
